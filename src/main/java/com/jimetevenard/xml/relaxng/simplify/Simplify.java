@@ -1,6 +1,13 @@
 package com.jimetevenard.xml.relaxng.simplify;
+
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.Charset;
 
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -15,34 +22,73 @@ import com.thaiopensource.validate.prop.rng.RngProperty;
 
 @Mojo(name = "simplify")
 public class Simplify extends AbstractMojo {
-	
-	
-	@Parameter( defaultValue = "${project.basedir}", required = true, readonly = true )
+
+	private static final String DEFAULT_SUFFIX = ".simplified.rng";
+	private static final Charset UTF_8 = Charset.forName("UTF-8");
+
+	@Parameter(defaultValue = "${project.basedir}", required = true, readonly = true)
 	private File basedir;
-	
+
 	@Parameter
 	private Schema[] schemas;
+	
+	@Parameter
+	private String encoding;
 
 	@Override
 	public void execute() throws MojoExecutionException, MojoFailureException {
-		for (Schema schema : schemas) {
-			InputSource schemaSrc = new 
-		}
-
 		try {
-			String simplifiedSchema = getSimplifiedSchema(test);
-			
-			//TODO écrire le fichier
+
+			for (Schema schema : schemas) {
+				File schemaFile = new File(basedir, schema.getSourcePath());
+				File simplifiedSchemaFile = targetFile(schema,basedir);
+
+				InputSource schemaSrc = new InputSource(new FileInputStream(schemaFile));
+
+				String simplifiedSchema = getSimplifiedSchema(schemaSrc);
+				writeFile(simplifiedSchema, simplifiedSchemaFile);
+
+			}
+
 		} catch (SAXException | IOException e) {
 			throw new MojoFailureException("An exception occured simplifying the schema", e);
 		}
 
 	}
 
-	public static String getSimplifiedSchema(InputSource schema) throws SAXException, IOException {
+	private File targetFile(Schema schema, File basedir2) {
+		File simplifiedSchemaFile;
+		if (schema.getTargetPath() != null) {
+			// i.e. explicitely specified by the user's POM
+			simplifiedSchemaFile = new File(basedir, schema.getTargetPath());
+		} else {
+			// i.e. unspecified => default filename
+			String simplifiedFileName = schema.getSourcePath() + DEFAULT_SUFFIX;
+			simplifiedSchemaFile = new File(basedir, simplifiedFileName);
+		}
+		return simplifiedSchemaFile;
+	}
+
+	private void writeFile(String simplifiedSchema, File simplifiedSchemaFile) throws IOException {
+		if(!simplifiedSchemaFile.isFile()){
+			simplifiedSchemaFile.getParentFile().mkdirs();
+			simplifiedSchemaFile.createNewFile();
+		}
+		
+		Charset encoding = this.encoding != null ? Charset.forName(this.encoding) : UTF_8;
+		
+		OutputStream outStream = new FileOutputStream(simplifiedSchemaFile);
+		OutputStreamWriter writer = new OutputStreamWriter(outStream, encoding);
+
+		writer.write(simplifiedSchema);
+		writer.close();
+
+	}
+
+	public String getSimplifiedSchema(InputSource schema) throws SAXException, IOException {
 
 		ValidationDriver driver = new ValidationDriver();
-		driver.loadSchema(schema); // TODO
+		driver.loadSchema(schema); 
 		String simple = driver.getSchemaProperties().get(RngProperty.SIMPLIFIED_SCHEMA);
 
 		return simple;
