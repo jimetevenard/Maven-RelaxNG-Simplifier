@@ -11,7 +11,7 @@ It just calls [Jing](https://github.com/relaxng/jing-trang) to do the job.
 ## Usage
 
 You can find a sample utilisation project here :
-<http://TODO/>
+<https://github.com/labo-jim/Maven-RelaxNg-simplifier-exemple>
 
 
     <execution>
