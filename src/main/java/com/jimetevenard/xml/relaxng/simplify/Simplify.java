@@ -45,6 +45,7 @@ public class Simplify extends AbstractMojo {
 	public void execute() throws MojoExecutionException, MojoFailureException {
 		try {
 			
+			if(schemas == null) return ;
 			
 			for (Schema schema : schemas) {
 				File schemaFile = new File(basedir, schema.getSourcePath());
@@ -116,8 +117,11 @@ public class Simplify extends AbstractMojo {
 	
 	private List<String> catalogsURIs(){
 		List<String> catalogsList = new ArrayList<>();
-		for (String cat : this.catalogs) {
-			catalogsList.add(new File(basedir, cat).toURI().toString());	
+		
+		if(this.catalogs != null){
+			for (String cat : this.catalogs) {
+				catalogsList.add(new File(basedir, cat).toURI().toString());	
+			}
 		}
 		
 		return catalogsList;
