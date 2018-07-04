@@ -1,13 +1,13 @@
 package com.jimetevenard.xml.relaxng.simplify;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -17,6 +17,9 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
+import com.thaiopensource.resolver.catalog.CatalogResolver;
+import com.thaiopensource.util.PropertyMapBuilder;
+import com.thaiopensource.validate.ValidateProperty;
 import com.thaiopensource.validate.ValidationDriver;
 import com.thaiopensource.validate.prop.rng.RngProperty;
 
@@ -34,16 +37,20 @@ public class Simplify extends AbstractMojo {
 	
 	@Parameter
 	private String encoding;
+	
+	@Parameter
+	private String[] catalogs;
 
 	@Override
 	public void execute() throws MojoExecutionException, MojoFailureException {
 		try {
-
+			
+			
 			for (Schema schema : schemas) {
 				File schemaFile = new File(basedir, schema.getSourcePath());
 				File simplifiedSchemaFile = targetFile(schema,basedir);
 
-				InputSource schemaSrc = new InputSource(new FileInputStream(schemaFile));
+				InputSource schemaSrc = new InputSource(schemaFile.toURI().toString());
 
 				String simplifiedSchema = getSimplifiedSchema(schemaSrc);
 				writeFile(simplifiedSchema, simplifiedSchemaFile);
@@ -86,12 +93,34 @@ public class Simplify extends AbstractMojo {
 	}
 
 	public String getSimplifiedSchema(InputSource schema) throws SAXException, IOException {
-
-		ValidationDriver driver = new ValidationDriver();
+		PropertyMapBuilder properties = new PropertyMapBuilder();
+		
+		CatalogResolver resolver = new CatalogResolver(catalogsURIs());
+		properties.put(ValidateProperty.RESOLVER, resolver);
+		
+		ValidationDriver driver = new ValidationDriver(properties.toPropertyMap());
+		
+		/**
+		 * TODO / Refacto :
+		 * 
+		 * Réutiliser le ValidationDriver et le monter en instance ?
+		 * A voir si c'est possible dans la doc.
+		 */
+		
 		driver.loadSchema(schema); 
 		String simple = driver.getSchemaProperties().get(RngProperty.SIMPLIFIED_SCHEMA);
 
 		return simple;
+	}
+
+	
+	private List<String> catalogsURIs(){
+		List<String> catalogsList = new ArrayList<>();
+		for (String cat : this.catalogs) {
+			catalogsList.add(new File(basedir, cat).toURI().toString());	
+		}
+		
+		return catalogsList;
 	}
 
 }
